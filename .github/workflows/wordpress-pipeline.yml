@@ -1,0 +1,212 @@
+name: WordPress Headless CMS Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_to_production:
+        description: 'Deploy to production'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  schedule:
+    # Run daily backups at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  backup_wordpress:
+    name: Backup WordPress Instances
+    runs-on: ubuntu-latest
+    # Only run on schedule events or when manually triggered
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $(cd terraform && terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
+          ssh-keyscan -H $(cd terraform && terraform output -raw production_public_ip) >> ~/.ssh/known_hosts
+
+      - name: Backup Staging
+        run: |
+          cd scripts
+          chmod +x backup-wordpress.sh
+          ./backup-wordpress.sh wordpress-cms-staging
+
+      - name: Backup Production
+        run: |
+          cd scripts
+          chmod +x backup-wordpress.sh
+          ./backup-wordpress.sh wordpress-cms-production
+
+  deploy_to_staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    # Run on push to main or when manually triggered without production deployment
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_production == 'false')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Terraform Init and Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $(cd terraform && terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
+
+      - name: Configure WordPress REST API on Staging
+        run: |
+          STAGING_IP=$(cd terraform && terraform output -raw staging_public_ip)
+          
+          # Wait for WordPress to be fully available
+          echo "Waiting for WordPress to be available..."
+          timeout 300 bash -c 'until curl -s http://$0 > /dev/null; do sleep 5; done' $STAGING_IP
+          
+          # Configure proper permalink structure for REST API
+          ssh -i ~/.ssh/id_rsa bitnami@$STAGING_IP "sudo /opt/bitnami/wp-cli/bin/wp rewrite structure '/%year%/%monthnum%/%postname%/' --path=/opt/bitnami/wordpress"
+          
+          # Install and activate necessary plugins for headless CMS
+          ssh -i ~/.ssh/id_rsa bitnami@$STAGING_IP "sudo /opt/bitnami/wp-cli/bin/wp plugin install --activate custom-post-type-ui advanced-custom-fields --path=/opt/bitnami/wordpress"
+          
+          # Configure CORS for REST API
+          ssh -i ~/.ssh/id_rsa bitnami@$STAGING_IP "sudo /opt/bitnami/ctlscript.sh stop apache && \
+            sudo sed -i '/^<VirtualHost/a \\\t<IfModule mod_headers.c>\\n\\\t\\\tHeader set Access-Control-Allow-Origin \"*\"\\n\\\t\\\tHeader set Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE\"\\n\\\t\\\tHeader set Access-Control-Allow-Headers \"Authorization, Content-Type\"\\n\\\t</IfModule>' /opt/bitnami/apache2/conf/bitnami/bitnami.conf && \
+            sudo /opt/bitnami/ctlscript.sh start apache"
+          
+          echo "WordPress on staging has been configured for headless CMS use"
+      
+      - name: Test REST API on Staging
+        run: |
+          STAGING_IP=$(cd terraform && terraform output -raw staging_public_ip)
+          
+          # Test the WP REST API
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$STAGING_IP/wp-json/wp/v2/posts)
+          if [[ $RESPONSE_CODE -ne 200 ]]; then
+            echo "REST API test failed with response code: $RESPONSE_CODE"
+            exit 1
+          fi
+          
+          echo "REST API is working correctly on staging"
+
+  deploy_to_production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy_to_staging]
+    # Only run when manually triggered with production deployment flag set to true
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_production == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $(cd terraform && terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
+          ssh-keyscan -H $(cd terraform && terraform output -raw production_public_ip) >> ~/.ssh/known_hosts
+
+      - name: Promote to Production
+        run: |
+          cd scripts
+          chmod +x promote-wordpress.sh
+          ./promote-wordpress.sh
+          
+      - name: Verify Production Deployment
+        run: |
+          PRODUCTION_IP=$(cd terraform && terraform output -raw production_public_ip)
+          
+          # Wait for WordPress to be fully available
+          echo "Waiting for production site to be available..."
+          timeout 300 bash -c 'until curl -s http://$0 > /dev/null; do sleep 5; done' $PRODUCTION_IP
+          
+          # Test the WP REST API
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$PRODUCTION_IP/wp-json/wp/v2/posts)
+          if [[ $RESPONSE_CODE -ne 200 ]]; then
+            echo "Production REST API test failed with response code: $RESPONSE_CODE"
+            exit 1
+          fi
+          
+          echo "Production deployment verified successfully!"
+          
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: wp-v${{ github.run_number }}
+          release_name: WordPress Release v${{ github.run_number }}
+          body: |
+            WordPress Headless CMS Production Release v${{ github.run_number }}
+            
+            Deployed on: ${{ github.event.repository.updated_at }}
+            Commit: ${{ github.sha }}
+            
+            This release includes all content and configurations promoted from the staging environment to production.
+            
+            Access the WordPress API at: http://${{ steps.output.outputs.production_ip }}/wp-json
