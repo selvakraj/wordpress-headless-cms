@@ -55,7 +55,7 @@ jobs:
         run: |
           cd scripts
           chmod +x backup-wordpress.sh
-          ./backup-wordpress.sh wordpress-cms-staging wordpress-cms-backups
+          ./backup-wordpress.sh wordpress-cms-staging wordpress-cms-backups ${{ env.INSTANCE_IP }}
 
       # - name: Backup Production
       #   run: |
