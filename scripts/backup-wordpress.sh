@@ -2,7 +2,7 @@
 
 # Configuration
 INSTANCE_NAME=$1  # Pass the instance name as an argument (e.g., wordpress-cms-staging or wordpress-cms-production)
-BUCKET_NAME=$(terraform output -raw backup_bucket_name)
+BUCKET_NAME=$2
 TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 BACKUP_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
 SSH_KEY="~/.ssh/id_rsa"
