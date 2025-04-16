@@ -4,19 +4,19 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      deploy_to_production:
-        description: 'Deploy to production'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-  schedule:
-    # Run daily backups at 2 AM UTC
-    - cron: '0 2 * * *'
+  # workflow_dispatch:
+  #   inputs:
+  #     deploy_to_production:
+  #       description: 'Deploy to production'
+  #       required: true
+  #       default: 'false'
+  #       type: choice
+  #       options:
+  #         - 'true'
+  #         - 'false'
+  # schedule:
+  #   # Run daily backups at 2 AM UTC
+  #   - cron: '0 2 * * *'
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -28,7 +28,7 @@ jobs:
     name: Backup WordPress Instances
     runs-on: ubuntu-latest
     # Only run on schedule events or when manually triggered
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
