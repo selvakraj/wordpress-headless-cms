@@ -39,10 +39,10 @@ jobs:
           terraform_version: 1.6.6
 
       - name: Terraform Init
-        run: terraform init
-      - name: Show Terraform path
-        run: which terraform
-
+        run: |
+          cd terraform
+          terraform init
+          which terraform
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -51,10 +51,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Terraform Init
-        run: |
-          cd terraform
-          terraform init
+      # - name: Terraform Init
+      #   run: |
+      #     cd terraform
+      #     terraform init
 
       - name: Set up SSH
         run: |
