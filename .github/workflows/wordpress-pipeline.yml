@@ -66,6 +66,7 @@ jobs:
           
           # First make sure Terraform is initialized
           cd terraform
+          terraform init
          
           # Get the IPs directly 
           # (avoiding potential hostname resolution issues)
