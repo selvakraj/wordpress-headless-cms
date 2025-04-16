@@ -42,10 +42,14 @@ jobs:
 
       - name: Get Lightsail instance IP
         run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           INSTANCE_NAME="wordpress-cms-staging"
           INSTANCE_IP=$(aws lightsail get-instance --instance-name $INSTANCE_NAME --query 'instance.publicIpAddress' --output text)
           echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
-          echo "INSTANCE_IP=$INSTANCE_IP"
+          # echo "INSTANCE_IP=$INSTANCE_IP"
+          ssh-keyscan -H $INSTANCE_IP >> ~/.ssh/known_hosts
 
       - name: Backup Staging
         run: |
