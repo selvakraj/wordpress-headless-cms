@@ -53,6 +53,7 @@ jobs:
 
       - name: Terraform Init
         run: |
+          terraform version
           cd terraform
           terraform init
 
@@ -63,7 +64,8 @@ jobs:
           # Add the public key to known_hosts (for avoiding SSH verification)
           cd terraform
           terraform init
-          ssh-keyscan -H $(cd terraform && terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
+          
+          ssh-keyscan -H $(terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
           
           # mkdir -p ~/.ssh
           # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
