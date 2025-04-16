@@ -66,11 +66,11 @@ jobs:
           
           # First make sure Terraform is initialized
           cd terraform
-          terraform init
-          
+         
           # Get the IPs directly 
           # (avoiding potential hostname resolution issues)
           STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
+          echo $STAGING_IP
           PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
           
           # Only add to known_hosts if IPs were obtained
