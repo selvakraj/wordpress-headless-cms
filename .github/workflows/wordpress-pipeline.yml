@@ -33,17 +33,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6
-
-      - name: Terraform Init
-        run: |
-          cd terraform
-          terraform init
-          which terraform
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -51,40 +40,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Terraform Init
+      - name: Get Lightsail instance IP
         run: |
-          terraform version
-          cd terraform
-          terraform init
-          terraform output
-          terraform refresh
-
-      - name: Set up SSH
-        run: |
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
-          echo "SSH key generated successfully"
-          
-          chmod 600 ~/.ssh/id_rsa
-          
-          # First make sure Terraform is initialized
-          cd terraform
-          terraform init
-         
-          # Get the IPs directly 
-          # (avoiding potential hostname resolution issues)
-          STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
-          echo $STAGING_IP
-          PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
-          
-          # Only add to known_hosts if IPs were obtained
-          if [ ! -z "$STAGING_IP" ]; then
-            ssh -o StrictHostKeyChecking=no user@$STAGING_IP
-
-          fi
-          
-          if [ ! -z "$PRODUCTION_IP" ]; then
-            ssh -o StrictHostKeyChecking=no user@$PRODUCTION_IP
-          fi
+          INSTANCE_NAME="wordpress-cms-staging"
+          INSTANCE_IP=$(aws lightsail get-instance --instance-name $INSTANCE_NAME --query 'instance.publicIpAddress' --output text)
+          echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+          echo "INSTANCE_IP=$INSTANCE_IP"
 
       - name: Backup Staging
         run: |
