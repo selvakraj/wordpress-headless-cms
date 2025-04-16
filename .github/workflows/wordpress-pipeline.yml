@@ -55,7 +55,7 @@ jobs:
         run: |
           cd scripts
           chmod +x backup-wordpress.sh
-          ./backup-wordpress.sh wordpress-cms-staging
+          ./backup-wordpress.sh wordpress-cms-staging wordpress-cms-backups
 
       # - name: Backup Production
       #   run: |
