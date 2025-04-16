@@ -82,11 +82,11 @@ jobs:
           
           # # Only add to known_hosts if IPs were obtained
           # if [ ! -z "$STAGING_IP" ]; then
-          ssh-keyscan -H 3.110.2.149 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.StagingIP }} >> ~/.ssh/known_hosts
           # fi
           
           # if [ ! -z "$PRODUCTION_IP" ]; then
-          ssh-keyscan -H 13.200.170.61 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.ProductionIP }} >> ~/.ssh/known_hosts
           # fi
 
       - name: Backup Staging
