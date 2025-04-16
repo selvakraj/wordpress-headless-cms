@@ -51,22 +51,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # - name: Terraform Init
-      #   run: |
-      #     cd terraform
-      #     terraform init
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
 
       - name: Set up SSH
         run: |
-          # Generate a new SSH key pair
           ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
           echo "SSH key generated successfully"
           # Add the public key to known_hosts (for avoiding SSH verification)
           cd terraform
           terraform init
-          mkdir -p ~/.ssh
-          STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
-          ssh-keyscan -H $STAGING_IP >> ~/.ssh/known_hosts
+          ssh-keyscan -H $(cd terraform && terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
           
           # mkdir -p ~/.ssh
           # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
