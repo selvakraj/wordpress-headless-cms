@@ -59,35 +59,29 @@ jobs:
 
       - name: Set up SSH
         run: |
-          # ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
-          # echo "SSH key generated successfully"
-          # Add the public key to known_hosts (for avoiding SSH verification)
-          # cd terraform
-          # terraform init
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
+          echo "SSH key generated successfully"
           
-          # ssh-keyscan -H $(terraform output -raw staging_public_ip) >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_rsa
           
-          # mkdir -p ~/.ssh
-          # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          # chmod 600 ~/.ssh/id_rsa
+          # First make sure Terraform is initialized
+          cd terraform
+          terraform init
           
-          # # First make sure Terraform is initialized
-          # cd terraform
-          # terraform init
+          # Get the IPs directly 
+          # (avoiding potential hostname resolution issues)
+          STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
+          PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
           
-          # # Get the IPs directly 
-          # # (avoiding potential hostname resolution issues)
-          # STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
-          # PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
+          # Only add to known_hosts if IPs were obtained
+          if [ ! -z "$STAGING_IP" ]; then
+            ssh -o StrictHostKeyChecking=no user@$STAGING_IP
+
+          fi
           
-          # # Only add to known_hosts if IPs were obtained
-          # if [ ! -z "$STAGING_IP" ]; then
-          ssh-keyscan -H ${{ secrets.StagingIP }} >> ~/.ssh/known_hosts
-          # fi
-          
-          # if [ ! -z "$PRODUCTION_IP" ]; then
-          ssh-keyscan -H ${{ secrets.ProductionIP }} >> ~/.ssh/known_hosts
-          # fi
+          if [ ! -z "$PRODUCTION_IP" ]; then
+            ssh -o StrictHostKeyChecking=no user@$PRODUCTION_IP
+          fi
 
       - name: Backup Staging
         run: |
