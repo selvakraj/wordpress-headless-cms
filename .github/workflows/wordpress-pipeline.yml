@@ -58,27 +58,37 @@ jobs:
 
       - name: Set up SSH
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          
-          # First make sure Terraform is initialized
+          # Generate a new SSH key pair
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
+          echo "SSH key generated successfully"
+          # Add the public key to known_hosts (for avoiding SSH verification)
           cd terraform
           terraform init
-          
-          # Get the IPs directly 
-          # (avoiding potential hostname resolution issues)
+          mkdir -p ~/.ssh
           STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
-          PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
+          ssh-keyscan -H $STAGING_IP >> ~/.ssh/known_hosts
           
-          # Only add to known_hosts if IPs were obtained
-          if [ ! -z "$STAGING_IP" ]; then
-            ssh-keyscan -H $STAGING_IP >> ~/.ssh/known_hosts
-          fi
+          # mkdir -p ~/.ssh
+          # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          # chmod 600 ~/.ssh/id_rsa
           
-          if [ ! -z "$PRODUCTION_IP" ]; then
-            ssh-keyscan -H $PRODUCTION_IP >> ~/.ssh/known_hosts
-          fi
+          # # First make sure Terraform is initialized
+          # cd terraform
+          # terraform init
+          
+          # # Get the IPs directly 
+          # # (avoiding potential hostname resolution issues)
+          # STAGING_IP=$(terraform output -raw staging_public_ip || echo "")
+          # PRODUCTION_IP=$(terraform output -raw production_public_ip || echo "")
+          
+          # # Only add to known_hosts if IPs were obtained
+          # if [ ! -z "$STAGING_IP" ]; then
+          #   ssh-keyscan -H $STAGING_IP >> ~/.ssh/known_hosts
+          # fi
+          
+          # if [ ! -z "$PRODUCTION_IP" ]; then
+          #   ssh-keyscan -H $PRODUCTION_IP >> ~/.ssh/known_hosts
+          # fi
 
       - name: Backup Staging
         run: |
