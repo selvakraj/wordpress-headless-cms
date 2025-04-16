@@ -56,6 +56,7 @@ jobs:
           terraform version
           cd terraform
           terraform init
+          terraform output
           terraform refresh
 
       - name: Set up SSH
