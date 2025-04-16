@@ -10,9 +10,9 @@ SSH_USER="bitnami"  # WordPress Lightsail instances use 'bitnami' user
 
 # Get instance IP
 if [[ $INSTANCE_NAME == *"staging"* ]]; then
-  INSTANCE_IP=$(terraform output -raw staging_public_ip)
+  INSTANCE_IP=$3
 elif [[ $INSTANCE_NAME == *"production"* ]]; then
-  INSTANCE_IP=$(terraform output -raw production_public_ip)
+  INSTANCE_IP=$3
 else
   echo "Error: Invalid instance name. Please use the full instance name (e.g., wordpress-cms-staging)"
   exit 1
@@ -86,7 +86,7 @@ aws lightsail upload-object \
   --bucket-name $BUCKET_NAME \
   --key "${INSTANCE_NAME}/${BACKUP_NAME}.tar.gz" \
   --body "/tmp/${BACKUP_NAME}.tar.gz" \
-  --region $(terraform output -raw aws_region 2>/dev/null || echo "ap-south-1")
+  --region "ap-south-1"
 
 if [ $? -ne 0 ]; then
   echo -e "${RED}Failed to upload backup to Lightsail bucket. Aborting.${NC}"
@@ -109,7 +109,7 @@ fi
 echo "Updating backup inventory..."
 aws lightsail get-bucket-objects \
   --bucket-name $BUCKET_NAME \
-  --region $(terraform output -raw aws_region 2>/dev/null || echo "ap-south-1") \
+  --region "ap-south-1" \
   --query "objects[?starts_with(path, '$INSTANCE_NAME/')].{Key:path,Size:size,LastModified:createdAt}" \
   --output json > /tmp/backup_inventory.json
 
@@ -117,7 +117,7 @@ aws lightsail upload-object \
   --bucket-name $BUCKET_NAME \
   --key "${INSTANCE_NAME}/backup_inventory.json" \
   --body "/tmp/backup_inventory.json" \
-  --region $(terraform output -raw aws_region 2>/dev/null || echo "ap-south-1")
+  --region "ap-south-1"
 
 rm -f /tmp/backup_inventory.json
 
