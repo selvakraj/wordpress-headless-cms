@@ -59,8 +59,8 @@ jobs:
 
       - name: Set up SSH
         run: |
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
-          echo "SSH key generated successfully"
+          # ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" # No passphrase (-N "")
+          # echo "SSH key generated successfully"
           # Add the public key to known_hosts (for avoiding SSH verification)
           # cd terraform
           # terraform init
