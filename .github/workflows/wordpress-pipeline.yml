@@ -53,20 +53,17 @@ jobs:
 
       - name: Create Lightsail Instance Snapshot
         run: 
-          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
-          INSTANCE_NAME="wordpress-cms-staging"
-          aws lightsail create-instance-snapshot \
-            --instance-name $INSTANCE_NAME \
-            --instance-snapshot-name $SNAPSHOT_NAME
-        env:
-          SNAPSHOT_NAME: ${{ env.SNAPSHOT_NAME }}
-          INSTANCE_NAME: ${{ env.INSTANCE_NAME }}
+          # SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
+          # INSTANCE_NAME="wordpress-cms-staging"
+          aws lightsail create-instance-snapshot --instance-name wordpress-cms-staging --instance-snapshot-name ${INSTANCE_NAME}-backup-${TIMESTAMP}
+        # env:
+        #   SNAPSHOT_NAME: ${{ env.SNAPSHOT_NAME }}
+        #   INSTANCE_NAME: ${{ env.INSTANCE_NAME }}
   
       - name: Wait for Snapshot to Complete
         run: |
           echo "Waiting for snapshot to complete: $SNAPSHOT_NAME"
-          aws lightsail wait instance-snapshot-complete \
-            --instance-snapshot-name $SNAPSHOT_NAME
+          aws lightsail wait instance-snapshot-complete --instance-snapshot-name $SNAPSHOT_NAME
         env:
           SNAPSHOT_NAME: ${{ env.SNAPSHOT_NAME }}
 
