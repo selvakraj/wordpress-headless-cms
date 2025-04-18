@@ -51,16 +51,9 @@ jobs:
           # echo "INSTANCE_IP=$INSTANCE_IP"
           ssh-keyscan -H $INSTANCE_IP >> ~/.ssh/known_hosts
 
-      - name: Generate Timestamp and Snapshot Name
-        id: snapshotinfo
-        run: 
-          INSTANCE_NAME="wordpress-cms-staging"
-          TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
-          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
-          echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
-  
       - name: Create Lightsail Instance Snapshot
         run: 
+          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
           INSTANCE_NAME="wordpress-cms-staging"
           aws lightsail create-instance-snapshot \
             --instance-name $INSTANCE_NAME \
