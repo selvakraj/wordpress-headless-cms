@@ -51,11 +51,28 @@ jobs:
           # echo "INSTANCE_IP=$INSTANCE_IP"
           ssh-keyscan -H $INSTANCE_IP >> ~/.ssh/known_hosts
 
-      - name: Backup Staging
+      - name: Create Lightsail Instance Snapshot
         run: |
-          cd scripts
-          chmod +x backup-wordpress.sh
-          ./backup-wordpress.sh wordpress-cms-staging wordpress-cms-backups ${{ env.INSTANCE_IP }}
+          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${{ steps.timestamp.outputs.time }}"
+          INSTANCE_NAME="wordpress-cms-staging"
+          echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
+          echo "Creating snapshot for instance: $INSTANCE_NAME"
+          aws lightsail create-instance-snapshot \
+            --instance-name $INSTANCE_NAME \
+            --instance-snapshot-name $SNAPSHOT_NAME
+  
+      - name: Wait for Snapshot to Complete
+        run: |
+          echo "Waiting for snapshot to complete..."
+          aws lightsail wait instance-snapshot-complete \
+            --instance-snapshot-name $SNAPSHOT_NAME
+          echo "Snapshot completed: $SNAPSHOT_NAME ✅"
+
+      # - name: Backup Staging
+      #   run: |
+      #     cd scripts
+      #     chmod +x backup-wordpress.sh
+      #     ./backup-wordpress.sh wordpress-cms-staging wordpress-cms-backups ${{ env.INSTANCE_IP }}
 
       # - name: Backup Production
       #   run: |
