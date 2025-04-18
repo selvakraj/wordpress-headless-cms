@@ -51,22 +51,31 @@ jobs:
           # echo "INSTANCE_IP=$INSTANCE_IP"
           ssh-keyscan -H $INSTANCE_IP >> ~/.ssh/known_hosts
 
+      - name: Generate Timestamp and Snapshot Name
+        id: snapshotinfo
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
+          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
+          echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
+          echo "Generated snapshot name: $SNAPSHOT_NAME"
+  
       - name: Create Lightsail Instance Snapshot
         run: |
-          SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${{ steps.timestamp.outputs.time }}"
-          INSTANCE_NAME="wordpress-cms-staging"
-          echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
-          echo "Creating snapshot for instance: $INSTANCE_NAME"
+          echo "Using snapshot name: $SNAPSHOT_NAME"
           aws lightsail create-instance-snapshot \
             --instance-name $INSTANCE_NAME \
             --instance-snapshot-name $SNAPSHOT_NAME
+        env:
+          SNAPSHOT_NAME: ${{ env.SNAPSHOT_NAME }}
+          INSTANCE_NAME: ${{ env.INSTANCE_NAME }}
   
       - name: Wait for Snapshot to Complete
         run: |
-          echo "Waiting for snapshot to complete..."
+          echo "Waiting for snapshot to complete: $SNAPSHOT_NAME"
           aws lightsail wait instance-snapshot-complete \
             --instance-snapshot-name $SNAPSHOT_NAME
-          echo "Snapshot completed: $SNAPSHOT_NAME ✅"
+        env:
+          SNAPSHOT_NAME: ${{ env.SNAPSHOT_NAME }}
 
       # - name: Backup Staging
       #   run: |
