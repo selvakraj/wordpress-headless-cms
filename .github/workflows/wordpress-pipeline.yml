@@ -53,11 +53,11 @@ jobs:
 
       - name: Generate Timestamp and Snapshot Name
         id: snapshotinfo
-        run: |
+        run: 
+          INSTANCE_NAME="wordpress-cms-staging"
           TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
           SNAPSHOT_NAME="${INSTANCE_NAME}-backup-${TIMESTAMP}"
           echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
-          echo "Generated snapshot name: $SNAPSHOT_NAME"
   
       - name: Create Lightsail Instance Snapshot
         run: |
