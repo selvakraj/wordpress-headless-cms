@@ -60,8 +60,8 @@ jobs:
           echo "SNAPSHOT_NAME=$SNAPSHOT_NAME" >> $GITHUB_ENV
   
       - name: Create Lightsail Instance Snapshot
-        run: |
-          echo "Using snapshot name: $SNAPSHOT_NAME"
+        run: 
+          INSTANCE_NAME="wordpress-cms-staging"
           aws lightsail create-instance-snapshot \
             --instance-name $INSTANCE_NAME \
             --instance-snapshot-name $SNAPSHOT_NAME
